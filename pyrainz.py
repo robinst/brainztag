@@ -6,6 +6,7 @@ import glob
 from optparse import OptionParser
 
 import musicbrainz2.webservice as ws
+from mutagen.easyid3 import EasyID3 as ID3
 
 
 def main(args):
@@ -48,9 +49,22 @@ def main(args):
         elif answer in ['no', 'n']:
             return 1
     
+    date = release.getEarliestReleaseDate()
+    tracks_total = len(release.tracks)
+    
     print "Tagging..."
-    
-    
+    for index, (file, track) in enumerate(zip(files, release.tracks)):
+        track_number = index + 1
+        tag = ID3(file)
+        tag['artist'] = release.artist.name
+        tag['album'] = release.title
+        tag['title'] = track.title
+        tag['date']  = date
+        tag['tracknumber'] = "%i/%i" % (track_number, tracks_total)
+        tag.save()
+        sys.stdout.write('.')
+        sys.stdout.flush()
+
 
 def choose_release(results):
     if len(results) == 1:
