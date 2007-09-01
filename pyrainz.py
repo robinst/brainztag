@@ -10,19 +10,12 @@ from mutagen.easyid3 import EasyID3 as ID3
 
 
 def main(args):
-    usage = "Usage: %prog [options] DIRECTORY"
-    parser = OptionParser(usage=usage, version="%prog 0.1")
-    options, args = parser.parse_args(args)
-    
-    if len(args) != 1 or not os.path.isdir(args[0]):
-        parser.error("first argument must be directory")
-
-    directory = args[0]
+    directory = parse(args)
     files = glob.glob(os.path.join(directory, "*.mp3"))
     
     artist = raw_input('Artist: ')
     disc_title = raw_input('Disc: ')
-        
+    
     query = ws.Query()
     f = ws.ReleaseFilter(artistName=artist, title=disc_title)
     results = query.getReleases(f)
@@ -42,12 +35,8 @@ def main(args):
         n = index + 1
         print "%-2s %-30s %-30s" % (n, track.title, os.path.basename(file))
     
-    while True:
-        answer = raw_input("Continue? [Y/n] ")
-        if answer in ['yes', 'y', '']:
-            break
-        elif answer in ['no', 'n']:
-            return 1
+    if not yes_or_no("Tag? [Y/n] "):
+        return 1
     
     date = release.getEarliestReleaseDate()
     tracks_total = len(release.tracks)
@@ -64,6 +53,17 @@ def main(args):
         tag.save()
         sys.stdout.write('.')
         sys.stdout.flush()
+
+
+def parse(args):
+    usage = "Usage: %prog [options] DIRECTORY"
+    parser = OptionParser(usage=usage, version="%prog 0.1")
+    options, args = parser.parse_args(args)
+    
+    if len(args) != 1 or not os.path.isdir(args[0]):
+        parser.error("first argument must be directory")
+    
+    return args[0]
 
 
 def choose_release(results):
@@ -84,6 +84,15 @@ def choose_release(results):
             continue
     
     return results[number-1].release
+
+
+def yes_or_no(question):
+    while True:
+        answer = raw_input(question)
+        if answer in ['yes', 'y', '']:
+            return True
+        elif answer in ['no', 'n']:
+            return False
 
 
 if __name__ == '__main__':
