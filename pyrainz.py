@@ -5,6 +5,8 @@ import os.path
 import glob
 from optparse import OptionParser
 
+import musicbrainz2.webservice as ws
+
 
 def main(args):
     usage = "Usage: %prog [options] DIRECTORY"
@@ -17,12 +19,62 @@ def main(args):
     directory = args[0]
     files = glob.glob(os.path.join(directory, "*.mp3"))
     
-    try:
-        artist = raw_input('Artist: ')
-        disc_title = raw_input('Disc: ')
-    except KeyboardInterrupt:
+    artist = raw_input('Artist: ')
+    disc_title = raw_input('Disc: ')
+        
+    query = ws.Query()
+    f = ws.ReleaseFilter(artistName=artist, title=disc_title)
+    results = query.getReleases(f)
+    
+    if not results:
+        print "No matching discs found."
         return 1
+    
+    release = choose_release(results)
+    
+    inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
+    release = query.getReleaseById(release.id, inc)
+    
+    print "%s - %s" % (release.artist.name, release.title)
+    print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
+    for index, (file, track) in enumerate(zip(files, release.tracks)):
+        n = index + 1
+        print "%-2s %-30s %-30s" % (n, track.title, os.path.basename(file))
+    
+    while True:
+        answer = raw_input("Continue? [Y/n] ")
+        if answer in ['yes', 'y', '']:
+            break
+        elif answer in ['no', 'n']:
+            return 1
+    
+    print "Tagging..."
+    
+    
+
+def choose_release(results):
+    if len(results) == 1:
+        return results[0].release
+    
+    print "Found %i discs. Choose the correct one." % len(results)
+    for index, result in enumerate(results):
+        r = result.release
+        print "%i: %s - %s (%i Tracks)" % (
+            index + 1, r.artist.name, r.title, r.tracksCount)
+    
+    number = 0
+    while not 1 <= number <= len(results):
+        try:
+            number = int(raw_input("Disc: "))
+        except ValueError:
+            continue
+    
+    return results[number-1].release
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
+    try:
+        exitcode = main(sys.argv[1:])
+    except KeyboardInterrupt:
+        exitcode = 1
+    sys.exit(exitcode)
