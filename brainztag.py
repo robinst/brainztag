@@ -12,9 +12,10 @@ from mutagen.easyid3 import EasyID3 as ID3
 def main(args):
     directory = parse(args)
     files = glob.glob(os.path.join(directory, "*.mp3"))
+    files = [f.decode(sys.getfilesystemencoding()) for f in files]
     
-    artist = raw_input('Artist: ')
-    disc_title = raw_input('Disc: ')
+    artist = raw_input('Artist: ').decode(sys.stdin.encoding)
+    disc_title = raw_input('Disc: ').decode(sys.stdin.encoding)
     
     query = ws.Query()
     f = ws.ReleaseFilter(artistName=artist, title=disc_title)
