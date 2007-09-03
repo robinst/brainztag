@@ -33,18 +33,19 @@ def main(args):
     
     inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
     release = query.getReleaseById(release.id, inc)
+
+    date = release.getEarliestReleaseDate()
+    tracks_total = len(release.tracks)
     
-    print "%s - %s" % (release.artist.name, release.title)
+    print
+    print "%s - %s - %s - %s tracks" % (
+        release.artist.name, release.title, date, tracks_total)
     print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
-    for index, (file, track) in enumerate(zip(files, release.tracks)):
-        n = index + 1
-        print "%-2s %-30s %-30s" % (n, track.title, os.path.basename(file))
+    for i, (file, track) in enumerate(zip(files, release.tracks)):
+        print "%2s. %-30s %-30s" % (i + 1, track.title, os.path.basename(file))
     
     if not yes_or_no("Tag? [Y/n] "):
         return 1
-    
-    date = release.getEarliestReleaseDate()
-    tracks_total = len(release.tracks)
     
     print "Tagging..."
     for index, (file, track) in enumerate(zip(files, release.tracks)):
