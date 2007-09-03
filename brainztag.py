@@ -6,7 +6,7 @@ import glob
 from optparse import OptionParser
 
 import musicbrainz2.webservice as ws
-from mutagen.easyid3 import EasyID3 as ID3
+from mutagen import id3
 
 
 def main(args):
@@ -44,14 +44,24 @@ def main(args):
     
     print "Tagging..."
     for index, (file, track) in enumerate(zip(files, release.tracks)):
-        track_number = index + 1
-        tag = ID3(file)
-        tag['artist'] = release.artist.name
-        tag['album'] = release.title
-        tag['title'] = track.title
-        tag['date']  = date
-        tag['tracknumber'] = "%i/%i" % (track_number, tracks_total)
-        tag.save()
+        try:
+            tag = id3.ID3(file)
+        except id3.ID3NoHeaderError:
+            tag = id3.ID3()
+
+        if release.isSingleArtistRelease():
+            artist = release.artist.name
+        else:
+            artist = track.artist.name
+        track_num = "%i/%i" % (index + 1, tracks_total)
+
+        tag.add(id3.TPE1(3, artist))
+        tag.add(id3.TALB(3, release.title))
+        tag.add(id3.TIT2(3, track.title))
+        tag.add(id3.TDRC(3, date))
+        tag.add(id3.TRCK(3, track_num))
+
+        tag.save(file)
         sys.stdout.write('.')
         sys.stdout.flush()
 
