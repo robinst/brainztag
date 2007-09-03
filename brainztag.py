@@ -20,12 +20,16 @@ def main(args):
     query = ws.Query()
     f = ws.ReleaseFilter(artistName=artist, title=disc_title)
     results = query.getReleases(f)
+    releases = []
+    for result in results:
+        if result.release.tracksCount == len(files):
+            releases.append(result.release)
     
-    if not results:
+    if not releases:
         print "No matching discs found."
         return 1
     
-    release = choose_release(results)
+    release = choose_release(releases)
     
     inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
     release = query.getReleaseById(release.id, inc)
@@ -77,24 +81,23 @@ def parse(args):
     return args[0]
 
 
-def choose_release(results):
-    if len(results) == 1:
-        return results[0].release
+def choose_release(releases):
+    if len(releases) == 1:
+        return releases[0]
     
-    print "Found %i discs. Choose the correct one." % len(results)
-    for index, result in enumerate(results):
-        r = result.release
+    print "Found %i discs. Choose the correct one." % len(releases)
+    for i, r in enumerate(releases):
         print "%i: %s - %s (%i Tracks)" % (
-            index + 1, r.artist.name, r.title, r.tracksCount)
+            i + 1, r.artist.name, r.title, r.tracksCount)
     
     number = 0
-    while not 1 <= number <= len(results):
+    while not 1 <= number <= len(releases):
         try:
             number = int(raw_input("Disc: "))
         except ValueError:
             continue
     
-    return results[number-1].release
+    return releases[number-1]
 
 
 def yes_or_no(question):
