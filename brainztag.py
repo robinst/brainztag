@@ -4,6 +4,7 @@ import sys
 import os.path
 import glob
 from optparse import OptionParser
+import re
 
 import musicbrainz2.webservice as ws
 from mutagen import id3
@@ -34,6 +35,17 @@ def main(args):
     inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
     release = query.getReleaseById(release.id, inc)
 
+    discset = discset_info(release)
+    if discset:
+        release.title = discset['title']
+        discs_total = 0
+        while discs_total < discset['number']:
+            try:
+                answer = raw_input('How many discs does this set contain?: ')
+                discs_total = int(answer)
+            except ValueError:
+                continue
+
     date = release.getEarliestReleaseDate()
     tracks_total = len(release.tracks)
     
@@ -59,12 +71,16 @@ def main(args):
         else:
             artist = track.artist.name
         track_num = "%i/%i" % (index + 1, tracks_total)
+        disc_num  = "%i/%i" % (discset['number'], discs_total))
 
         tag.add(id3.TPE1(3, artist))
         tag.add(id3.TALB(3, release.title))
         tag.add(id3.TIT2(3, track.title))
         tag.add(id3.TDRC(3, date))
         tag.add(id3.TRCK(3, track_num))
+        if discset:
+            tag.add(TPOS(3, disc_num)
+            tag.add(COMM(3, discset['desc'], lang="eng"))
 
         tag.save(file)
         sys.stdout.write('.')
@@ -99,6 +115,16 @@ def choose_release(releases):
             continue
     
     return releases[number-1]
+
+
+def discset_info(release):
+    p = re.compile(r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)')
+    match = p.match(release.title)
+    if not match:
+        return None
+    info = match.groupdict()
+    info['number'] = int(info['number'])
+    return info
 
 
 def yes_or_no(question):
