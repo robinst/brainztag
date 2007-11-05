@@ -10,82 +10,142 @@ import musicbrainz2.webservice as ws
 from mutagen import id3
 
 
+def ask(question):
+    return raw_input(question).decode(sys.stdin.encoding)
+
+def yes_or_no(question):
+    while True:
+        answer = ask(question)
+        if answer in ['yes', 'y', '']:
+            return True
+        elif answer in ['no', 'n']:
+            return False
+
+class NoReleasesFoundError(Exception):
+    pass
+
+class Tagger(object):
+    def __init__(self, files):
+        self.files = files
+    
+    def collect_info(self):
+        self.artist = ask('Artist: ')
+        self.disc_title = ask('Disc: ')
+        
+        releases = self._find_releases()
+        if not releases:
+            raise NoReleasesFoundError()
+        self.release = self._query_release(releases)
+        
+        inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
+        self.release = query.getReleaseById(self.release.id, inc)
+        
+        self.discset = self._query_discset()
+        if self.discset:
+            self.release.title = discset['title']
+        
+        self.date = self.release.getEarliestReleaseDate()
+        self.tracks_total = len(self.release.tracks)
+    
+    def _find_releases(self):
+        query = ws.Query()
+        f = ws.ReleaseFilter(artistName=self.artist, title=self.disc_title)
+        results = query.getReleases(f)
+        releases = []
+        for result in results:
+            if result.release.tracksCount == len(files):
+                releases.append(result.release)
+        return releases
+    
+    def _query_release(self, releases):
+        if len(releases) == 1:
+            return releases[0]
+        
+        print "Found %i discs. Choose the correct one." % len(releases)
+        for i, r in enumerate(releases):
+            print "%i: %s - %s (%i Tracks)" % (
+                i + 1, r.artist.name, r.title, r.tracksCount)
+        
+        number = 0
+        while not 1 <= number <= len(releases):
+            try:
+                number = int(ask("Disc: "))
+            except ValueError:
+                continue
+        
+        return releases[number - 1]
+    
+    def _query_discset(self):
+        p = re.compile(r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)')
+        match = p.match(self.release.title)
+        if not match:
+            return None
+        discset = match.groupdict()
+        
+        discset['number'] = int(discset['number'])
+        discset['total'] = 0
+        while discset['total'] < discset['number']:
+            try:
+                discset['total'] = int(ask('How many discs does this set contain?: '))
+            except ValueError:
+                continue
+        return discset
+    
+    def print_info(self):
+        print
+        print "%s - %s - %s - %s tracks" % (
+            self.release.artist.name, self.release.title,
+            self.date, self.tracks_total)
+        print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
+        for i, (file, track) in enumerate(zip(self.files, self.release.tracks)):
+            print "%2s. %-30s %-30s" % (i + 1, track.title, os.path.basename(file))
+    
+    def tag(self):
+        print "Tagging..."
+        for index, (file, track) in enumerate(zip(self.files, self.release.tracks)):
+            try:
+                tag = id3.ID3(file)
+            except id3.ID3NoHeaderError:
+                tag = id3.ID3()
+            
+            if release.isSingleArtistRelease():
+                artist = self.release.artist.name
+            else:
+                artist = track.artist.name
+            track_num = "%i/%i" % (index + 1, self.tracks_total)
+            
+            tag.add(id3.TPE1(3, artist))
+            tag.add(id3.TALB(3, self.release.title))
+            tag.add(id3.TIT2(3, track.title))
+            tag.add(id3.TDRC(3, self.date))
+            tag.add(id3.TRCK(3, track_num))
+            if self.discset:
+                disc_num  = "%i/%i" % (self.discset['number'], self.discset['total'])
+                tag.add(TPOS(3, disc_num))
+                tag.add(COMM(3, self.discset['desc'], lang="eng"))
+            
+            tag.save(file)
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+
 def main(args):
     directory = parse(args)
     files = glob.glob(os.path.join(directory, "*.mp3"))
     files = [f.decode(sys.getfilesystemencoding()) for f in files]
+    tagger = Tagger(files)
     
-    artist = raw_input('Artist: ').decode(sys.stdin.encoding)
-    disc_title = raw_input('Disc: ').decode(sys.stdin.encoding)
-    
-    query = ws.Query()
-    f = ws.ReleaseFilter(artistName=artist, title=disc_title)
-    results = query.getReleases(f)
-    releases = []
-    for result in results:
-        if result.release.tracksCount == len(files):
-            releases.append(result.release)
-    
-    if not releases:
+    try:
+        tagger.collect_info()
+    except NoReleasesFoundError:
         print "No matching discs found."
         return 1
     
-    release = choose_release(releases)
-    
-    inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
-    release = query.getReleaseById(release.id, inc)
-
-    discset = discset_info(release)
-    if discset:
-        release.title = discset['title']
-        discs_total = 0
-        while discs_total < discset['number']:
-            try:
-                answer = raw_input('How many discs does this set contain?: ')
-                discs_total = int(answer)
-            except ValueError:
-                continue
-
-    date = release.getEarliestReleaseDate()
-    tracks_total = len(release.tracks)
-    
-    print
-    print "%s - %s - %s - %s tracks" % (
-        release.artist.name, release.title, date, tracks_total)
-    print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
-    for i, (file, track) in enumerate(zip(files, release.tracks)):
-        print "%2s. %-30s %-30s" % (i + 1, track.title, os.path.basename(file))
-    
+    tagger.print_info()
     if not yes_or_no("Tag? [Y/n] "):
         return 1
     
-    print "Tagging..."
-    for index, (file, track) in enumerate(zip(files, release.tracks)):
-        try:
-            tag = id3.ID3(file)
-        except id3.ID3NoHeaderError:
-            tag = id3.ID3()
-
-        if release.isSingleArtistRelease():
-            artist = release.artist.name
-        else:
-            artist = track.artist.name
-        track_num = "%i/%i" % (index + 1, tracks_total)
-        disc_num  = "%i/%i" % (discset['number'], discs_total)
-
-        tag.add(id3.TPE1(3, artist))
-        tag.add(id3.TALB(3, release.title))
-        tag.add(id3.TIT2(3, track.title))
-        tag.add(id3.TDRC(3, date))
-        tag.add(id3.TRCK(3, track_num))
-        if discset:
-            tag.add(TPOS(3, disc_num))
-            tag.add(COMM(3, discset['desc'], lang="eng"))
-
-        tag.save(file)
-        sys.stdout.write('.')
-        sys.stdout.flush()
-
+    tagger.tag()
 
 def parse(args):
     usage = "Usage: %prog [options] DIRECTORY"
@@ -96,44 +156,6 @@ def parse(args):
         parser.error("first argument must be directory")
     
     return args[0]
-
-
-def choose_release(releases):
-    if len(releases) == 1:
-        return releases[0]
-    
-    print "Found %i discs. Choose the correct one." % len(releases)
-    for i, r in enumerate(releases):
-        print "%i: %s - %s (%i Tracks)" % (
-            i + 1, r.artist.name, r.title, r.tracksCount)
-    
-    number = 0
-    while not 1 <= number <= len(releases):
-        try:
-            number = int(raw_input("Disc: "))
-        except ValueError:
-            continue
-    
-    return releases[number-1]
-
-
-def discset_info(release):
-    p = re.compile(r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)')
-    match = p.match(release.title)
-    if not match:
-        return None
-    info = match.groupdict()
-    info['number'] = int(info['number'])
-    return info
-
-
-def yes_or_no(question):
-    while True:
-        answer = raw_input(question)
-        if answer in ['yes', 'y', '']:
-            return True
-        elif answer in ['no', 'n']:
-            return False
 
 
 if __name__ == '__main__':
