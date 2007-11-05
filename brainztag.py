@@ -71,7 +71,7 @@ def main(args):
         else:
             artist = track.artist.name
         track_num = "%i/%i" % (index + 1, tracks_total)
-        disc_num  = "%i/%i" % (discset['number'], discs_total))
+        disc_num  = "%i/%i" % (discset['number'], discs_total)
 
         tag.add(id3.TPE1(3, artist))
         tag.add(id3.TALB(3, release.title))
@@ -79,7 +79,7 @@ def main(args):
         tag.add(id3.TDRC(3, date))
         tag.add(id3.TRCK(3, track_num))
         if discset:
-            tag.add(TPOS(3, disc_num)
+            tag.add(TPOS(3, disc_num))
             tag.add(COMM(3, discset['desc'], lang="eng"))
 
         tag.save(file)
