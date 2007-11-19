@@ -6,7 +6,7 @@ import glob
 from optparse import OptionParser
 import re
 
-import musicbrainz2.webservice as ws
+import musicbrainz2.webservice as mb
 from mutagen import id3
 
 
@@ -21,8 +21,10 @@ def yes_or_no(question):
         elif answer in ['no', 'n']:
             return False
 
+
 class NoReleasesFoundError(Exception):
     pass
+
 
 class Tagger(object):
     def __init__(self, files):
@@ -37,8 +39,8 @@ class Tagger(object):
             raise NoReleasesFoundError()
         self.release = self._query_release(releases)
         
-        inc = ws.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
-        self.release = query.getReleaseById(self.release.id, inc)
+        inc = mb.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
+        self.release = mb.Query().getReleaseById(self.release.id, inc)
         
         self.discset = self._query_discset()
         if self.discset:
@@ -48,12 +50,11 @@ class Tagger(object):
         self.tracks_total = len(self.release.tracks)
     
     def _find_releases(self):
-        query = ws.Query()
-        f = ws.ReleaseFilter(artistName=self.artist, title=self.disc_title)
-        results = query.getReleases(f)
+        f = mb.ReleaseFilter(artistName=self.artist, title=self.disc_title)
+        results = mb.Query().getReleases(f)
         releases = []
         for result in results:
-            if result.release.tracksCount == len(files):
+            if result.release.tracksCount == len(self.files):
                 releases.append(result.release)
         return releases
     
@@ -76,17 +77,18 @@ class Tagger(object):
         return releases[number - 1]
     
     def _query_discset(self):
-        p = re.compile(r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)')
-        match = p.match(self.release.title)
-        if not match:
+        pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)'
+        match = re.match(pattern, self.release.title)
+        if match is None:
             return None
+
         discset = match.groupdict()
-        
         discset['number'] = int(discset['number'])
         discset['total'] = 0
         while discset['total'] < discset['number']:
             try:
-                discset['total'] = int(ask('How many discs does this set contain?: '))
+                question = 'How many discs does this set contain?: '
+                discset['total'] = int(ask(question))
             except ValueError:
                 continue
         return discset
@@ -97,22 +99,26 @@ class Tagger(object):
             self.release.artist.name, self.release.title,
             self.date, self.tracks_total)
         print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
-        for i, (file, track) in enumerate(zip(self.files, self.release.tracks)):
-            print "%2s. %-30s %-30s" % (i + 1, track.title, os.path.basename(file))
+
+        files_and_tracks = zip(self.files, self.release.tracks)
+        for i, (file, track) in enumerate(files_and_tracks):
+            basename = os.path.basename(file)
+            print "%2s. %-30s %-30s" % (i + 1, track.title, basename)
     
     def tag(self):
         print "Tagging..."
-        for index, (file, track) in enumerate(zip(self.files, self.release.tracks)):
+        files_and_tracks = zip(self.files, self.release.tracks)
+        for i, (file, track) in enumerate(files_and_tracks):
             try:
                 tag = id3.ID3(file)
             except id3.ID3NoHeaderError:
                 tag = id3.ID3()
             
-            if release.isSingleArtistRelease():
+            if self.release.isSingleArtistRelease():
                 artist = self.release.artist.name
             else:
                 artist = track.artist.name
-            track_num = "%i/%i" % (index + 1, self.tracks_total)
+            track_num = "%i/%i" % (i + 1, self.tracks_total)
             
             tag.add(id3.TPE1(3, artist))
             tag.add(id3.TALB(3, self.release.title))
@@ -120,7 +126,8 @@ class Tagger(object):
             tag.add(id3.TDRC(3, self.date))
             tag.add(id3.TRCK(3, track_num))
             if self.discset:
-                disc_num  = "%i/%i" % (self.discset['number'], self.discset['total'])
+                disc_num  = "%i/%i" % (self.discset['number'],
+                                       self.discset['total'])
                 tag.add(TPOS(3, disc_num))
                 tag.add(COMM(3, self.discset['desc'], lang="eng"))
             
@@ -152,10 +159,10 @@ def parse(args):
     parser = OptionParser(usage=usage, version="%prog 0.1")
     options, args = parser.parse_args(args)
     
-    if len(args) != 1 or not os.path.isdir(args[0]):
-        parser.error("first argument must be directory")
-    
-    return args[0]
+    if len(args) == 1 and os.path.isdir(args[0]):
+        return args[0]
+
+    parser.error("first argument must be directory")
 
 
 if __name__ == '__main__':
