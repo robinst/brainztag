@@ -106,7 +106,7 @@ class Tagger(object):
             print "%2s. %-30s %-30s" % (i + 1, track.title, basename)
     
     def tag(self):
-        print "Tagging..."
+        sys.stdout.write("Tagging")
         files_and_tracks = zip(self.files, self.release.tracks)
         for i, (file, track) in enumerate(files_and_tracks):
             try:
@@ -134,6 +134,7 @@ class Tagger(object):
             tag.save(file)
             sys.stdout.write('.')
             sys.stdout.flush()
+        print
 
 
 def main(args):
