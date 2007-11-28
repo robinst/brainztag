@@ -44,7 +44,7 @@ class Tagger(object):
         
         self.discset = self._query_discset()
         if self.discset:
-            self.release.title = discset['title']
+            self.release.title = self.discset['title']
         
         self.date = self.release.getEarliestReleaseDate()
         self.tracks_total = len(self.release.tracks)
