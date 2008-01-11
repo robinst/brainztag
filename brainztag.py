@@ -38,6 +38,8 @@ class Tagger(object):
         releases = self._find_releases()
         if not releases:
             raise NoReleasesFoundError()
+        # TODO: Use 'key' argument
+        releases.sort(lambda a, b: cmp(a.title, b.title))
         self.release = self._query_release(releases)
         
         inc = mb.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
@@ -135,7 +137,9 @@ class Tagger(object):
                                        self.discset['total'])
                 tag.add(id3.TPOS(3, disc_num))
                 if 'desc' in self.discset:
-                    tag.add(id3.COMM(3, self.discset['desc'], lang='eng'))
+                    tag.delall('COMM')
+                    tag.add(id3.COMM(3, text=self.discset['desc'],
+                                     desc='', lang='eng'))
             
             tag.save(file)
             sys.stdout.write('.')
