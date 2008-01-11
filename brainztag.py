@@ -1,7 +1,8 @@
 #!/usr/bin/python
 
 import sys
-import os.path
+import os
+import fnmatch
 import glob
 from optparse import OptionParser
 import re
@@ -143,9 +144,9 @@ class Tagger(object):
 
 
 def main(args):
-    directory = parse(args)
-    files = glob.glob(os.path.join(directory, "*.mp3"))
-    files = [f.decode(sys.getfilesystemencoding()) for f in files]
+    dir = parse(args).decode(sys.getfilesystemencoding())
+    files = fnmatch.filter(os.listdir(dir), '*.mp3')
+    files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files)
     
     try:
