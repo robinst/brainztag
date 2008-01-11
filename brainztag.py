@@ -77,7 +77,7 @@ class Tagger(object):
         return releases[number - 1]
     
     def _query_discset(self):
-        pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+)(: .*)?)\)'
+        pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+).*)\)'
         match = re.match(pattern, self.release.title)
         if match is None:
             return None
@@ -91,6 +91,9 @@ class Tagger(object):
                 discset['total'] = int(ask(question))
             except ValueError:
                 continue
+
+        if not ':' in discset['desc']:
+            del discset['desc']
         return discset
     
     def print_info(self):
@@ -114,10 +117,11 @@ class Tagger(object):
             except id3.ID3NoHeaderError:
                 tag = id3.ID3()
             
-            if self.release.isSingleArtistRelease():
-                artist = self.release.artist.name
-            else:
+            try:
                 artist = track.artist.name
+            except AttributeError:
+                # Fallback to the artist of the relase
+                artist = self.release.artist.name
             track_num = "%i/%i" % (i + 1, self.tracks_total)
             
             tag.add(id3.TPE1(3, artist))
@@ -128,8 +132,9 @@ class Tagger(object):
             if self.discset:
                 disc_num  = "%i/%i" % (self.discset['number'],
                                        self.discset['total'])
-                tag.add(TPOS(3, disc_num))
-                tag.add(COMM(3, self.discset['desc'], lang="eng"))
+                tag.add(id3.TPOS(3, disc_num))
+                if 'desc' in self.discset:
+                    tag.add(id3.COMM(3, self.discset['desc'], lang='eng'))
             
             tag.save(file)
             sys.stdout.write('.')
