@@ -3,11 +3,10 @@
 import sys
 import os
 import fnmatch
-import glob
 from optparse import OptionParser
 import re
 
-import musicbrainz2.webservice as mb
+from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter
 from musicbrainz2.model import VARIOUS_ARTISTS_ID
 from mutagen import id3
 
@@ -43,8 +42,8 @@ class Tagger(object):
         releases.sort(lambda a, b: cmp(a.title, b.title))
         self.release = self._query_release(releases)
         
-        inc = mb.ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
-        self.release = mb.Query().getReleaseById(self.release.id, inc)
+        inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
+        self.release = Query().getReleaseById(self.release.id, inc)
         
         self.discset = self._query_discset()
         if self.discset:
@@ -59,8 +58,8 @@ class Tagger(object):
             self.album_artist = None
     
     def _find_releases(self):
-        f = mb.ReleaseFilter(artistName=self.artist, title=self.disc_title)
-        results = mb.Query().getReleases(f)
+        f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
+        results = Query().getReleases(f)
         releases = []
         for result in results:
             if result.release.tracksCount == len(self.files):
