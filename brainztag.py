@@ -8,6 +8,7 @@ from optparse import OptionParser
 import re
 
 import musicbrainz2.webservice as mb
+from musicbrainz2.model import VARIOUS_ARTISTS_ID
 from mutagen import id3
 
 
@@ -51,6 +52,11 @@ class Tagger(object):
         
         self.date = self.release.getEarliestReleaseDate()
         self.tracks_total = len(self.release.tracks)
+        # Handle albums assigned to a single artist but containing tracks of multiple artists.
+        if not self.release.isSingleArtistRelease() and not self.release.artist.id == VARIOUS_ARTISTS_ID:
+            self.album_artist = self.release.artist.name
+        else:
+            self.album_artist = None
     
     def _find_releases(self):
         f = mb.ReleaseFilter(artistName=self.artist, title=self.disc_title)
@@ -132,6 +138,8 @@ class Tagger(object):
             tag.add(id3.TIT2(3, track.title))
             tag.add(id3.TDRC(3, self.date))
             tag.add(id3.TRCK(3, track_num))
+            if self.album_artist is not None:
+                tag.add(id3.TPE2(3, self.album_artist))
             if self.discset:
                 disc_num  = "%i/%i" % (self.discset['number'],
                                        self.discset['total'])
