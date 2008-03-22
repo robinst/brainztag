@@ -22,6 +22,10 @@ def yes_or_no(question):
         elif answer in ['no', 'n']:
             return False
 
+def make_fs_safe(s):
+    s = s.replace("/", "-")
+    return s
+
 
 class NoReleasesFoundError(Exception):
     pass
@@ -131,7 +135,7 @@ class Tagger(object):
                 # Fallback to the artist of the relase
                 artist = self.release.artist.name
             track_num = "%i/%i" % (i + 1, self.tracks_total)
-            
+
             tag.add(id3.TPE1(3, artist))
             tag.add(id3.TALB(3, self.release.title))
             tag.add(id3.TIT2(3, track.title))
@@ -153,6 +157,27 @@ class Tagger(object):
             sys.stdout.flush()
         print
 
+    def rename(self):
+        sys.stdout.write("Renaming")
+        files_and_tracks = zip(self.files, self.release.tracks)
+        for i, (file, track) in enumerate(files_and_tracks):
+            track_num = i + 1
+
+            filename = "%02i. %s.mp3" % (track_num, track.title)
+            filename = make_fs_safe(filename)
+            new_file = os.path.join(os.path.dirname(file), filename)
+
+            if os.path.exists(new_file):
+                print
+                print '"' + new_file + '" already exists, not overwriting.'
+                continue
+
+            os.rename(file, new_file)
+
+            sys.stdout.write('.')
+            sys.stdout.flush()
+        print
+
 
 def main(args):
     dir = parse(args).decode(sys.getfilesystemencoding())
@@ -168,10 +193,14 @@ def main(args):
         return 1
     
     tagger.print_info()
+
     if not yes_or_no("Tag? [Y/n] "):
         return 1
-    
     tagger.tag()
+
+    if not yes_or_no("Rename? [Y/n] "):
+        return 1
+    tagger.rename()
 
 def parse(args):
     usage = "Usage: %prog [options] DIRECTORY"
