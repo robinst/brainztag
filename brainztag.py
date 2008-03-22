@@ -157,6 +157,7 @@ class Tagger(object):
 def main(args):
     dir = parse(args).decode(sys.getfilesystemencoding())
     files = fnmatch.filter(os.listdir(dir), '*.mp3')
+    files.sort()
     files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files)
     
