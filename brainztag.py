@@ -32,8 +32,9 @@ class NoReleasesFoundError(Exception):
 
 
 class Tagger(object):
-    def __init__(self, files):
+    def __init__(self, files, options):
         self.files = files
+        self.options = options
     
     def collect_info(self):
         self.artist = ask('Artist: ')
@@ -126,13 +127,15 @@ class Tagger(object):
         for i, (file, track) in enumerate(files_and_tracks):
             try:
                 tag = id3.ID3(file)
+                if self.options.strip:
+                    tag.delete()
             except id3.ID3NoHeaderError:
                 tag = id3.ID3()
             
             try:
                 artist = track.artist.name
             except AttributeError:
-                # Fallback to the artist of the relase
+                # Fallback to the artist of the release
                 artist = self.release.artist.name
             track_num = "%i/%i" % (i + 1, self.tracks_total)
 
@@ -180,11 +183,12 @@ class Tagger(object):
 
 
 def main(args):
-    dir = parse(args).decode(sys.getfilesystemencoding())
+    options, dir = parse(args)
+    dir = dir.decode(sys.getfilesystemencoding())
     files = fnmatch.filter(os.listdir(dir), '*.mp3')
     files.sort()
     files = [os.path.join(dir, file) for file in files]
-    tagger = Tagger(files)
+    tagger = Tagger(files, options)
     
     try:
         tagger.collect_info()
@@ -205,10 +209,12 @@ def main(args):
 def parse(args):
     usage = "Usage: %prog [options] DIRECTORY"
     parser = OptionParser(usage=usage, version="%prog 0.1")
+    parser.add_option('-s', '--strip', action='store_true',
+                      help="strip other tags from files")
     options, args = parser.parse_args(args)
     
     if len(args) == 1 and os.path.isdir(args[0]):
-        return args[0]
+        return options, args[0]
 
     parser.error("first argument must be directory")
 
