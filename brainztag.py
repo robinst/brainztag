@@ -144,8 +144,10 @@ class Tagger(object):
             tag.add(id3.TIT2(3, track.title))
             tag.add(id3.TDRC(3, self.date))
             tag.add(id3.TRCK(3, track_num))
+
             if self.album_artist is not None:
                 tag.add(id3.TPE2(3, self.album_artist))
+
             if self.discset:
                 disc_num  = "%i/%i" % (self.discset['number'],
                                        self.discset['total'])
@@ -154,6 +156,9 @@ class Tagger(object):
                     tag.delall('COMM')
                     tag.add(id3.COMM(3, text=self.discset['desc'],
                                      desc='', lang='eng'))
+
+            if self.options.genre:
+                tag.add(id3.TCON(3, self.options.genre))
             
             tag.save(file)
             sys.stdout.write('.')
@@ -211,6 +216,8 @@ def parse(args):
     parser = OptionParser(usage=usage, version="%prog 0.1")
     parser.add_option('-s', '--strip', action='store_true',
                       help="strip other tags from files")
+    parser.add_option('-g', '--genre', dest='genre',
+                      help="set the genre frame")
     options, args = parser.parse_args(args)
     
     if len(args) == 1 and os.path.isdir(args[0]):
