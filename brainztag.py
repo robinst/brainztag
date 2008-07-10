@@ -26,6 +26,18 @@ def make_fs_safe(s):
     s = s.replace("/", "-")
     return s
 
+def natural_sort_key(s):
+    """Sort key for natural sorting of strings.
+
+    >>> l = ['a1', 'b1', 'a10b10', 'a2', 'a10b2']
+    >>> l.sort(key=natural_sort_key)
+    >>> l
+    ['a1', 'a2', 'a10b2', 'a10b10', 'b1']
+    """
+    def try_int(s):
+        try: return int(s)
+        except: return s
+    return map(try_int, re.findall(r'(\d+|\D+)', s))
 
 class NoReleasesFoundError(Exception):
     pass
@@ -191,7 +203,7 @@ def main(args):
     options, dir = parse(args)
     dir = dir.decode(sys.getfilesystemencoding())
     files = fnmatch.filter(os.listdir(dir), '*.mp3')
-    files.sort()
+    files.sort(key=natural_sort_key)
     files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files, options)
     
