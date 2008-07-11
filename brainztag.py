@@ -55,8 +55,7 @@ class Tagger(object):
         releases = self._find_releases()
         if not releases:
             raise NoReleasesFoundError()
-        # TODO: Use 'key' argument
-        releases.sort(lambda a, b: cmp(a.title, b.title))
+        releases.sort(key=lambda r: r.title)
         self.release = self._query_release(releases)
         
         inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
