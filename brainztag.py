@@ -86,11 +86,14 @@ class Tagger(object):
         
         self.date = self.release.getEarliestReleaseDate()
         self.tracks_total = len(self.release.tracks)
-        # Handle albums assigned to a single artist but containing tracks of multiple artists.
-        if not self.release.isSingleArtistRelease() and not self.release.artist.id == VARIOUS_ARTISTS_ID:
-            self.album_artist = self.release.artist.name
-        else:
+
+        # Handle albums assigned to a single artist but containing tracks of
+        # multiple artists.
+        is_va = self.release.artist.id == VARIOUS_ARTISTS_ID
+        if is_va or self.release.isSingleArtistRelease():
             self.album_artist = None
+        else:
+            self.album_artist = self.release.artist.name
     
     def _find_releases(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
