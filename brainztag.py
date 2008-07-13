@@ -28,6 +28,7 @@ import re
 from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter
 from musicbrainz2.model import VARIOUS_ARTISTS_ID
 from mutagen import id3
+from mutagen import apev2
 
 
 def ask(question):
@@ -156,12 +157,16 @@ class Tagger(object):
     
     def tag(self):
         sys.stdout.write("Tagging")
+
         files_and_tracks = zip(self.files, self.release.tracks)
         for i, (file, track) in enumerate(files_and_tracks):
+
+            if self.options.strip:
+                id3.delete(file)
+                apev2.delete(file)
+
             try:
                 tag = id3.ID3(file)
-                if self.options.strip:
-                    tag.delete()
             except id3.ID3NoHeaderError:
                 tag = id3.ID3()
             
@@ -248,7 +253,7 @@ def parse(args):
     usage = "Usage: %prog [options] DIRECTORY"
     parser = OptionParser(usage=usage, version="%prog 0.1")
     parser.add_option('-s', '--strip', action='store_true',
-                      help="strip other tags from files")
+                      help="strip existing ID3 and APEv2 tags from files")
     parser.add_option('-g', '--genre', dest='genre',
                       help="set the genre frame")
     options, args = parser.parse_args(args)
