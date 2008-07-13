@@ -100,10 +100,14 @@ class Tagger(object):
     def _find_releases(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
         results = Query().getReleases(f)
+
         releases = []
         for result in results:
             if result.release.tracksCount == len(self.files):
                 releases.append(result.release)
+
+        releases.sort(key=lambda r: r.getEarliestReleaseDate())
+
         return releases
     
     def _query_release(self, releases):
@@ -112,8 +116,8 @@ class Tagger(object):
         
         print "Found %i discs. Choose the correct one." % len(releases)
         for i, r in enumerate(releases):
-            print "%i: %s - %s (%i Tracks)" % (
-                i + 1, r.artist.name, r.title, r.tracksCount)
+            print "%i: %s - %s (%s)" % (
+                i + 1, r.artist.name, r.title, r.getEarliestReleaseDate())
         
         number = 0
         while not 1 <= number <= len(releases):
