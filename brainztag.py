@@ -22,11 +22,12 @@
 import sys
 import os
 import fnmatch
-from optparse import OptionParser
 import re
+from optparse import OptionParser
 
 from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter
 from musicbrainz2.model import VARIOUS_ARTISTS_ID
+
 from mutagen import id3
 from mutagen import apev2
 
