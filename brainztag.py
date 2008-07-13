@@ -23,6 +23,7 @@ import sys
 import os
 import fnmatch
 import re
+import readline
 from optparse import OptionParser
 
 from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter
@@ -32,8 +33,20 @@ from mutagen import id3
 from mutagen import apev2
 
 
-def ask(question):
-    return raw_input(question).decode(sys.stdin.encoding)
+def ask(question, default=''):
+    """Ask the user a question and return the typed answer.
+
+    Optionally, a default answer can be provided which the user can edit.
+    """
+    def pre_input_hook():
+        readline.insert_text(default)
+        readline.redisplay()
+    readline.set_pre_input_hook(pre_input_hook)
+
+    try:
+        return raw_input(question).decode(sys.stdin.encoding)
+    finally:
+        readline.set_pre_input_hook(None)
 
 def yes_or_no(question):
     while True:
@@ -70,8 +83,9 @@ class Tagger(object):
         self.options = options
     
     def collect_info(self):
-        self.artist = ask('Artist: ')
-        self.disc_title = ask('Disc: ')
+        artist, disc = self._guess_artist_and_disc()
+        self.artist = ask('Artist: ', artist)
+        self.disc_title = ask('Disc: ', disc)
         
         releases = self._find_releases()
         if not releases:
@@ -97,6 +111,17 @@ class Tagger(object):
         else:
             self.album_artist = self.release.artist.name
     
+    def _guess_artist_and_disc(self):
+        path = os.path.dirname(os.path.abspath(self.files[0]))
+        dir = os.path.basename(path)
+        parts = re.split('\s*-\s*', dir)
+        if len(parts) >= 2:
+            return parts[0], parts[1]
+        elif len(parts) == 1:
+            return "", parts[0]
+        else:
+            return "", ""
+
     def _find_releases(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
         results = Query().getReleases(f)
