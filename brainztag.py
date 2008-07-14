@@ -243,6 +243,9 @@ class Tagger(object):
             filename = make_fs_safe(filename)
             new_file = os.path.join(os.path.dirname(file), filename)
 
+            if new_file == file:
+                continue
+
             if os.path.exists(new_file):
                 print
                 print '"' + new_file + '" already exists, not overwriting.'
