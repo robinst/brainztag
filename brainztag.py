@@ -279,13 +279,11 @@ def main(args):
     
     tagger.print_info()
 
-    if not yes_or_no("Tag? [Y/n] "):
-        return 1
-    tagger.tag()
+    if yes_or_no("Tag? [Y/n] "):
+        tagger.tag()
 
-    if not yes_or_no("Rename? [Y/n] "):
-        return 1
-    tagger.rename()
+    if yes_or_no("Rename? [Y/n] "):
+        tagger.rename()
 
 def parse(args):
     usage = "Usage: %prog [options] DIRECTORY"
