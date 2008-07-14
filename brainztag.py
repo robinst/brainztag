@@ -259,6 +259,11 @@ def main(args):
     options, dir = parse(args)
     dir = dir.decode(sys.getfilesystemencoding())
     files = fnmatch.filter(os.listdir(dir), '*.mp3')
+
+    if len(files) == 0:
+        print "No mp3 files found in '" + dir + "'"
+        return 1
+
     files.sort(key=natural_sort_key)
     files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files, options)
