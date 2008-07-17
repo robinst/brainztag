@@ -60,18 +60,25 @@ def make_fs_safe(s):
     s = s.replace("/", "-")
     return s
 
-def natural_sort_key(s):
-    """Sort key for natural sorting of strings.
+def distinctive_parts(s):
+    """Extract the distinctive parts of a str: the numbers and words.
+
+    The numbers are converted to int and the words are lowercased. All parts
+    are returned in a list.
+
+    The result can be used to do a natural sort:
 
     >>> l = ['a1', 'b1', 'a10b10', 'a2', 'a10b2']
-    >>> l.sort(key=natural_sort_key)
+    >>> l.sort(key=distinctive_parts)
     >>> l
     ['a1', 'a2', 'a10b2', 'a10b10', 'b1']
     """
-    def try_int(s):
-        try: return int(s)
-        except: return s
-    return map(try_int, re.findall(r'(\d+|\D+)', s))
+    def try_int(part):
+        try: return int(part)
+        except: return part
+    parts = re.findall(r'(\d+|[^\W\d]+)', s)
+    result = [try_int(part.lower()) for part in parts]
+    return result
 
 class NoReleasesFoundError(Exception):
     pass
@@ -102,6 +109,8 @@ class Tagger(object):
         
         self.date = self.release.getEarliestReleaseDate()
         self.tracks_total = len(self.release.tracks)
+
+        self._order_files()
 
         # Handle albums assigned to a single artist but containing tracks of
         # multiple artists.
@@ -172,6 +181,33 @@ class Tagger(object):
         if not ':' in discset['desc']:
             del discset['desc']
         return discset
+
+    def _order_files(self):
+        """Make self.files have the same order as the tracks."""
+
+        ordered_files = []
+        remaining_files = list(self.files)
+
+        for i, track in enumerate(self.release.tracks):
+            track_num = i + 1
+
+            def similarity(file):
+                # Strip directories and extension
+                file = os.path.splitext(os.path.basename(file))[0]
+                file_parts  = distinctive_parts(file)
+                track_parts = distinctive_parts(track.title) + [track_num]
+                score = 0
+                for part in track_parts:
+                    if part in file_parts:
+                        score += 1
+                        file_parts.remove(part)
+                return score
+
+            most_similar = max(remaining_files, key=similarity)
+            remaining_files.remove(most_similar)
+            ordered_files.append(most_similar)
+
+        self.files = ordered_files
     
     def print_info(self):
         print
@@ -267,7 +303,6 @@ def main(args):
         print "No mp3 files found in '" + dir + "'"
         return 1
 
-    files.sort(key=natural_sort_key)
     files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files, options)
     
