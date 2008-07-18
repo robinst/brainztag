@@ -76,7 +76,7 @@ def distinctive_parts(s):
     def try_int(part):
         try: return int(part)
         except: return part
-    parts = re.findall(r'(\d+|[^\W\d]+)', s)
+    parts = re.findall(r'(\d+|[^\W\d_]+)', s)
     result = [try_int(part.lower()) for part in parts]
     return result
 
