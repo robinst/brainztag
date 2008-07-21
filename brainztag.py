@@ -33,13 +33,13 @@ from mutagen import id3
 from mutagen import apev2
 
 
-def ask(question, default=''):
+def ask(question, default=u''):
     """Ask the user a question and return the typed answer.
 
     Optionally, a default answer can be provided which the user can edit.
     """
     def pre_input_hook():
-        readline.insert_text(default)
+        readline.insert_text(default.encode(sys.stdin.encoding))
         readline.redisplay()
     readline.set_pre_input_hook(pre_input_hook)
 
@@ -121,8 +121,10 @@ class Tagger(object):
             self.album_artist = self.release.artist.name
     
     def _guess_artist_and_disc(self):
-        path = os.path.dirname(os.path.abspath(self.files[0]))
-        dir = os.path.basename(path)
+        rel = self.files[0]
+        abs = os.path.normpath(os.path.join(os.getcwdu(), rel))
+        dir = os.path.basename(os.path.dirname(abs))
+
         parts = re.split('\s*-\s*', dir)
         if len(parts) >= 2:
             return parts[0], parts[1]
