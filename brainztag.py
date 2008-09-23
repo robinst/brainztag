@@ -125,7 +125,7 @@ class Tagger(object):
         abs = os.path.normpath(os.path.join(os.getcwdu(), rel))
         dir = os.path.basename(os.path.dirname(abs))
 
-        parts = re.split('\s*-\s*', dir)
+        parts = re.split('\s+-\s+', dir)
         if len(parts) >= 2:
             return parts[0], parts[1]
         elif len(parts) == 1:
