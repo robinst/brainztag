@@ -1,0 +1,9 @@
+TODO
+====
+
+- Dateien als Parameter übergeben anstatt Verzeichnis (für Discsets nützlich)
+- Tagging von einzelnen Stücken (auch anhand des Titels suchen)
+- Option für deaktivieren von automatischer Zuordnung der Dateien
+  (--no-file-matching, --no-autosort, --no-magic-sort oder so)
+- Option für verwendetes Dateinamen-Format bei Umbenennung
+- Tagging von FLAC
