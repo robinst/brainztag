@@ -265,7 +265,11 @@ class Tagger(object):
 
             if self.options.genre:
                 tag.add(id3.TCON(3, self.options.genre))
-            
+
+            # MusicBrainz Track UUID
+            track_uuid = track.id.split('/')[-1]
+            tag.add(id3.UFID(owner='http://musicbrainz.org', data=track_uuid))
+
             tag.save(file)
             sys.stdout.write('.')
             sys.stdout.flush()
