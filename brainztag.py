@@ -299,9 +299,7 @@ class Tagger(object):
             sys.stdout.flush()
         print
 
-
-def main(args):
-    options, dir = parse(args)
+def collect_files_in_folder(dir):
     dir = dir.decode(sys.getfilesystemencoding())
     files = fnmatch.filter(os.listdir(dir), '*.[mM][pP]3')
 
@@ -309,7 +307,20 @@ def main(args):
         print "No mp3 files found in '" + dir + "'"
         return 1
 
-    files = [os.path.join(dir, file) for file in files]
+    return [os.path.join(dir, file) for file in files]
+
+
+
+def main(args):
+    options, args = parse(args)
+    
+    if type(args) is str:
+        # args is a single folder
+        files = collect_files_in_folder(args)
+    else:
+        # args is a list of files
+        files = args
+    
     tagger = Tagger(files, options)
     
     try:
@@ -327,7 +338,7 @@ def main(args):
         tagger.rename()
 
 def parse(args):
-    usage = "Usage: %prog [options] DIRECTORY"
+    usage = "Usage: %prog [options] <DIRECTORY | FILES...>"
     parser = OptionParser(usage=usage, version="%prog 0.1")
     parser.add_option('-s', '--strip', action='store_true',
                       help="strip existing ID3 and APEv2 tags from files")
@@ -337,8 +348,10 @@ def parse(args):
     
     if len(args) == 1 and os.path.isdir(args[0]):
         return options, args[0]
+    elif len(args) >= 1:
+        return options, args
 
-    parser.error("first argument must be directory")
+    parser.error("please specify either one directory or a one or more files")
 
 
 if __name__ == '__main__':
