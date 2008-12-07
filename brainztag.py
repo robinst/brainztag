@@ -1,5 +1,5 @@
 #!/usr/bin/python
-
+# -*- coding: utf-8 -*-
 # brainztag: CLI tool to tag and rename music albums using MusicBrainz data
 #
 # Copyright (C) 2007-2008  Robin Stocker
@@ -31,7 +31,6 @@ from musicbrainz2.model import VARIOUS_ARTISTS_ID
 
 from mutagen import id3
 from mutagen import apev2
-
 
 def ask(question, default=u''):
     """Ask the user a question and return the typed answer.
@@ -83,42 +82,80 @@ def distinctive_parts(s):
 class NoReleasesFoundError(Exception):
     pass
 
+class Track(object):
+    def __init__(self, i, t, release):
+        self.release = release
+
+        self.title = t.title
+        self.id = t.id
+
+        # MusicBrainz Track UUID
+        self.uuid = self.id.split('/')[-1]
+
+        self.artist = t.artist
+        self.num = "%i/%i" % (i + 1, self.release.tracks_total)
+
+        # Fallback to the artist of the release
+        if self.artist is None:
+            self.artist = self.release.artist
+
+
+class Release(object):
+    def __init__(self, r):
+        self.title = r.title
+        self.tracksCount = r.tracksCount
+        self.earliestReleaseDate = r.getEarliestReleaseDate()
+        self.artist = r.artist
+        self.id = r.id
+
+    def load_details(self):
+        inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
+        details = Query().getReleaseById(self.id, inc)
+
+        self.tracks = []
+
+        self.tracks_total = len(details.tracks)
+
+        for i, t in enumerate(details.tracks):
+            self.tracks.append(Track(i, t, release=self))
+
+
+        self.artist = details.artist
+        self.isSingleArtistRelease = details.isSingleArtistRelease()
+
+        # Handle albums assigned to a single artist but containing tracks of
+        # multiple artists.
+        is_va = self.artist.id == VARIOUS_ARTISTS_ID
+        if is_va or self.isSingleArtistRelease:
+            self.album_artist = None
+        else:
+            self.album_artist = self.release.artist.name
+
 
 class Tagger(object):
     def __init__(self, files, options):
         self.files = files
         self.options = options
-    
+
     def collect_info(self):
         artist, disc = self._guess_artist_and_disc()
         self.artist = ask('Artist: ', artist)
         self.disc_title = ask('Disc: ', disc)
-        
+
         releases = self._find_releases()
         if not releases:
             raise NoReleasesFoundError()
         releases.sort(key=lambda r: r.title)
         self.release = self._query_release(releases)
-        
-        inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
-        self.release = Query().getReleaseById(self.release.id, inc)
-        
-        self.discset = self._query_discset()
-        if self.discset:
+
+        # hier kann man auch disktueiren
+        self.release.load_details()
+
+        self.release.discset = self._query_discset()
+        if self.release.discset:
             self.release.title = self.discset['title']
-        
-        self.date = self.release.getEarliestReleaseDate()
-        self.tracks_total = len(self.release.tracks)
 
         self._order_files()
-
-        # Handle albums assigned to a single artist but containing tracks of
-        # multiple artists.
-        is_va = self.release.artist.id == VARIOUS_ARTISTS_ID
-        if is_va or self.release.isSingleArtistRelease():
-            self.album_artist = None
-        else:
-            self.album_artist = self.release.artist.name
     
     def _guess_artist_and_disc(self):
         rel = self.files[0]
@@ -136,34 +173,42 @@ class Tagger(object):
     def _find_releases(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
         results = Query().getReleases(f)
+        # was wäre wenn wir hier die daten in unsere eigene 
+        # struktur wrappern würden und dabei gleichzeitig 
+        # alles normalisieren. dann würde das handling, 
+        # ausserhlab einhelticheer, keine komische Attribute Exceptions abfangen.
 
+        # btw, list comprehensions?
         releases = []
         for result in results:
-            if result.release.tracksCount == len(self.files):
-                releases.append(result.release)
+            # wrap result into our own structure
+            release = Release(result.release)
+            # only keep releases with correct amount of tracks
+            if release.tracksCount == len(self.files):
+                releases.append(release)
 
-        releases.sort(key=lambda r: r.getEarliestReleaseDate())
+        releases.sort(key=lambda r: r.earliestReleaseDate)
 
         return releases
-    
+
     def _query_release(self, releases):
         if len(releases) == 1:
             return releases[0]
-        
+
         print "Found %i discs. Choose the correct one." % len(releases)
         for i, r in enumerate(releases):
             print "%i: %s - %s (%s)" % (
-                i + 1, r.artist.name, r.title, r.getEarliestReleaseDate())
-        
+                i + 1, r.artist.name, r.title, r.earliestReleaseDate)
+
         number = 0
         while not 1 <= number <= len(releases):
             try:
                 number = int(ask("Disc: "))
             except ValueError:
                 continue
-        
+
         return releases[number - 1]
-    
+
     def _query_discset(self):
         pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+).*)\)'
         match = re.match(pattern, self.release.title)
@@ -210,24 +255,25 @@ class Tagger(object):
             ordered_files.append(most_similar)
 
         self.files = ordered_files
-    
+
     def print_info(self):
         print
         print "%s - %s - %s - %s tracks" % (
             self.release.artist.name, self.release.title,
-            self.date, self.tracks_total)
+            self.release.earliestReleaseDate, 
+            self.release.tracks_total)
         print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
 
         files_and_tracks = zip(self.files, self.release.tracks)
         for i, (file, track) in enumerate(files_and_tracks):
             basename = os.path.basename(file)
             print "%2s. %-30s %-30s" % (i + 1, track.title, basename)
-    
+
     def tag(self):
         sys.stdout.write("Tagging")
 
         files_and_tracks = zip(self.files, self.release.tracks)
-        for i, (file, track) in enumerate(files_and_tracks):
+        for file, track in files_and_tracks:
 
             if self.options.strip:
                 id3.delete(file)
@@ -237,38 +283,29 @@ class Tagger(object):
                 tag = id3.ID3(file)
             except id3.ID3NoHeaderError:
                 tag = id3.ID3()
-            
-            try:
-                artist = track.artist.name
-            except AttributeError:
-                # Fallback to the artist of the release
-                artist = self.release.artist.name
-            track_num = "%i/%i" % (i + 1, self.tracks_total)
 
-            tag.add(id3.TPE1(3, artist))
-            tag.add(id3.TALB(3, self.release.title))
+            tag.add(id3.TPE1(3, track.artist.name))
+            tag.add(id3.TALB(3, track.release.title))
             tag.add(id3.TIT2(3, track.title))
-            tag.add(id3.TDRC(3, self.date))
-            tag.add(id3.TRCK(3, track_num))
+            tag.add(id3.TDRC(3, track.release.earliestReleaseDate))
+            tag.add(id3.TRCK(3, track.num))
 
-            if self.album_artist is not None:
-                tag.add(id3.TPE2(3, self.album_artist))
+            if track.release.album_artist is not None:
+                tag.add(id3.TPE2(3, track.release.album_artist))
 
-            if self.discset:
-                disc_num  = "%i/%i" % (self.discset['number'],
-                                       self.discset['total'])
+            if track.release.discset:
+                disc_num  = "%i/%i" % (track.release.discset['number'],
+                                       track.release.discset['total'])
                 tag.add(id3.TPOS(3, disc_num))
-                if 'desc' in self.discset:
+                if 'desc' in track.release.discset:
                     tag.delall('COMM')
-                    tag.add(id3.COMM(3, text=self.discset['desc'],
+                    tag.add(id3.COMM(3, text=track.release.discset['desc'],
                                      desc='', lang='eng'))
 
             if self.options.genre:
                 tag.add(id3.TCON(3, self.options.genre))
 
-            # MusicBrainz Track UUID
-            track_uuid = track.id.split('/')[-1]
-            tag.add(id3.UFID(owner='http://musicbrainz.org', data=track_uuid))
+            tag.add(id3.UFID(owner='http://musicbrainz.org', data=track.uuid))
 
             tag.save(file)
             sys.stdout.write('.')
@@ -280,6 +317,9 @@ class Tagger(object):
         files_and_tracks = zip(self.files, self.release.tracks)
         for i, (file, track) in enumerate(files_and_tracks):
             track_num = i + 1
+
+            #format = self.options.format
+            #filename = "%02i. %s.mp3" % (track_num, track.title)#filename = format_filename(format, track)
 
             filename = "%02i. %s.mp3" % (track_num, track.title)
             filename = make_fs_safe(filename)
@@ -299,7 +339,6 @@ class Tagger(object):
             sys.stdout.flush()
         print
 
-
 def main(args):
     options, dir = parse(args)
     dir = dir.decode(sys.getfilesystemencoding())
@@ -311,13 +350,13 @@ def main(args):
 
     files = [os.path.join(dir, file) for file in files]
     tagger = Tagger(files, options)
-    
+
     try:
         tagger.collect_info()
     except NoReleasesFoundError:
         print "No matching discs found."
         return 1
-    
+
     tagger.print_info()
 
     if yes_or_no("Tag? [Y/n] "):
@@ -334,7 +373,7 @@ def parse(args):
     parser.add_option('-g', '--genre', dest='genre',
                       help="set the genre frame")
     options, args = parser.parse_args(args)
-    
+
     if len(args) == 1 and os.path.isdir(args[0]):
         return options, args[0]
 
