@@ -6,4 +6,12 @@ TODO
 - Option für deaktivieren von automatischer Zuordnung der Dateien
   (--no-file-matching, --no-autosort, --no-magic-sort oder so)
 - Option für verwendetes Dateinamen-Format bei Umbenennung
+- Option for whether or not to strip '(disc N)' from album title
 - Tagging von FLAC
+
+
+BUGS
+====
+
+- In album title the string '(disc N)' doesn't get stripped properly, a single
+  space character remains
