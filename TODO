@@ -10,6 +10,7 @@ TODO
 - Tagging von FLAC
 - Try to guess the artist name out of the path (probably as an
   option)
+- Check if there's already a mb uuid
 
 
 BUGS
