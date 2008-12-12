@@ -8,6 +8,8 @@ TODO
 - Option für verwendetes Dateinamen-Format bei Umbenennung
 - Option for whether or not to strip '(disc N)' from album title
 - Tagging von FLAC
+- Try to guess the artist name out of the path (probably as an
+  option)
 
 
 BUGS
