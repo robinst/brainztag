@@ -349,7 +349,8 @@ def parse(args):
     if len(args) == 1 and os.path.isdir(args[0]):
         return options, args[0]
     elif len(args) >= 1:
-        return options, args
+        if all(not os.path.isdir(arg) for arg in args):
+            return options, args
 
     parser.error("please specify either one directory or a one or more files")
 
