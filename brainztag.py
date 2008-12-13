@@ -299,36 +299,31 @@ class Tagger(object):
             sys.stdout.flush()
         print
 
-def collect_files_in_folder(dir):
-    dir = dir.decode(sys.getfilesystemencoding())
-    files = fnmatch.filter(os.listdir(dir), '*.[mM][pP]3')
-
-    if len(files) == 0:
-        print "No mp3 files found in '" + dir + "'"
-        return 1
-
-    return [os.path.join(dir, file) for file in files]
-
-
-
 def main(args):
     options, args = parse(args)
     
     if type(args) is str:
         # args is a single folder
-        files = collect_files_in_folder(args)
+        dir = args.decode(sys.getfilesystemencoding())
+        files = fnmatch.filter(os.listdir(dir), '*.[mM][pP]3')
+
+        if len(files) == 0:
+            print "No mp3 files found in '" + dir + "'"
+            return 1
+
+        files = [os.path.join(dir, file) for file in files]
     else:
         # args is a list of files
         files = args
-    
+
     tagger = Tagger(files, options)
-    
+
     try:
         tagger.collect_info()
     except NoReleasesFoundError:
         print "No matching discs found."
         return 1
-    
+
     tagger.print_info()
 
     if yes_or_no("Tag? [Y/n] "):
