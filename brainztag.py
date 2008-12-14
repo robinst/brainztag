@@ -153,7 +153,7 @@ class Tagger(object):
 
         self.release.discset = self._query_discset()
         if self.release.discset:
-            self.release.title = self.discset['title']
+            self.release.title = self.release.discset['title']
 
         self._order_files()
     
