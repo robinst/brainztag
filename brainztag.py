@@ -103,7 +103,7 @@ class Track(object):
 class Release(object):
     def __init__(self, r):
         self.title = r.title
-        self.tracksCount = r.tracksCount
+        self.tracks_total = r.tracksCount
         self.earliestReleaseDate = r.getEarliestReleaseDate()
         self.artist = r.artist
         self.id = r.id
@@ -114,11 +114,8 @@ class Release(object):
 
         self.tracks = []
 
-        self.tracks_total = len(details.tracks)
-
         for i, t in enumerate(details.tracks):
             self.tracks.append(Track(i, t, release=self))
-
 
         self.artist = details.artist
         self.isSingleArtistRelease = details.isSingleArtistRelease()
@@ -131,6 +128,7 @@ class Release(object):
         else:
             self.album_artist = self.release.artist.name
 
+        assert self.tracks_total == len(details.tracks), "unexpected trackk count"
 
 class Tagger(object):
     def __init__(self, files, options):
@@ -184,7 +182,7 @@ class Tagger(object):
             # wrap result into our own structure
             release = Release(result.release)
             # only keep releases with correct amount of tracks
-            if release.tracksCount == len(self.files):
+            if release.tracks_total == len(self.files):
                 releases.append(release)
 
         releases.sort(key=lambda r: r.earliestReleaseDate)
