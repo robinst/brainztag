@@ -169,8 +169,20 @@ class Tagger(object):
             return "", ""
 
     def _find_releases(self):
-        f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
+        query_limit = 100
+        f = ReleaseFilter(artistName=self.artist, title=self.disc_title,
+                    limit=query_limit)
         results = Query().getReleases(f)
+
+        if len(results) == query_limit:
+            print """\
+
+Woah! the specified artist/disc names were pretty vague
+we weren't able to check all possible candiates.
+
+Please try to be more specific if the correct album
+isn't in the following list.
+"""
         # was wäre wenn wir hier die daten in unsere eigene 
         # struktur wrappern würden und dabei gleichzeitig 
         # alles normalisieren. dann würde das handling, 
@@ -193,7 +205,8 @@ class Tagger(object):
         if len(releases) == 1:
             return releases[0]
 
-        print "Found %i discs. Choose the correct one." % len(releases)
+        print "Found %i discs with %i tracks. Choose the correct one." % \
+            (len(releases), len(self.files))
         for i, r in enumerate(releases):
             print "%i: %s - %s (%s)" % (
                 i + 1, r.artist.name, r.title, r.earliestReleaseDate)
