@@ -47,13 +47,29 @@ def ask(question, default=u''):
     finally:
         readline.set_pre_input_hook(None)
 
-def yes_or_no(question):
+def query(question, condition, converter=None):
     while True:
         answer = ask(question)
-        if answer in ['yes', 'y', '']:
-            return True
-        elif answer in ['no', 'n']:
-            return False
+
+        if converter:
+            try:
+                answer = converter(answer)
+            except ValueError, e:
+                print "Error: Invalid input"
+                continue
+
+        if condition(answer):
+            return answer
+
+def yes_or_no(question):
+    yes = ['yes', 'y', '']
+    no = ['no', 'n']
+
+    question += " (Y/n): "
+    condition = lambda a: a in yes + no
+    answer =  query(question, condition)
+
+    return answer in yes
 
 def make_fs_safe(s):
     s = s.replace("/", "-")
@@ -82,6 +98,15 @@ def distinctive_parts(s):
 class NoReleasesFoundError(Exception):
     pass
 
+class Discset(object):
+    def __init__(self, d):
+        self.title  = d['title']
+        self.desc   = d['desc']
+        self.number = int(d['number'])
+
+    def num(self):
+        return "%i/%i" % (self.number, self.total)
+
 class Track(object):
     def __init__(self, i, t, release):
         self.release = release
@@ -98,7 +123,6 @@ class Track(object):
         # Fallback to the artist of the release
         if self.artist is None:
             self.artist = self.release.artist
-
 
 class Release(object):
     def __init__(self, r):
@@ -151,7 +175,7 @@ class Tagger(object):
 
         self.release.discset = self._query_discset()
         if self.release.discset:
-            self.release.title = self.release.discset['title']
+            self.release.title = self.release.discset.title
 
         self._order_files()
     
@@ -198,13 +222,8 @@ class Tagger(object):
             print "%i: %s - %s (%s)" % (
                 i + 1, r.artist.name, r.title, r.earliestReleaseDate)
 
-        number = 0
-        while not 1 <= number <= len(releases):
-            try:
-                number = int(ask("Disc: "))
-            except ValueError:
-                continue
-
+        condition = lambda number: 1 <= number <= len(releases)
+        number = query("Disc: ", condition, converter=int)
         return releases[number - 1]
 
     def _query_discset(self):
@@ -213,18 +232,13 @@ class Tagger(object):
         if match is None:
             return None
 
-        discset = match.groupdict()
-        discset['number'] = int(discset['number'])
-        discset['total'] = 0
-        while discset['total'] < discset['number']:
-            try:
-                question = 'How many discs does this set contain?: '
-                discset['total'] = int(ask(question))
-            except ValueError:
-                continue
+        discset = Discset(match.groupdict())
 
-        if not ':' in discset['desc']:
-            del discset['desc']
+        question = 'How many discs does this set contain?: '
+        condition = lambda i: i >= discset.number
+
+        discset.total = query(question, condition, converter=int)
+
         return discset
 
     def _order_files(self):
@@ -291,13 +305,14 @@ class Tagger(object):
             if track.release.album_artist is not None:
                 tag.add(id3.TPE2(3, track.release.album_artist))
 
-            if track.release.discset:
-                disc_num  = "%i/%i" % (track.release.discset['number'],
-                                       track.release.discset['total'])
+            discset = track.release.discset
+            if discset:
+                disc_num  = discset.num()
+
                 tag.add(id3.TPOS(3, disc_num))
-                if 'desc' in track.release.discset:
+                if discset.desc:
                     tag.delall('COMM')
-                    tag.add(id3.COMM(3, text=track.release.discset['desc'],
+                    tag.add(id3.COMM(3, text=discset.desc,
                                      desc='', lang='eng'))
 
             if self.options.genre:
@@ -357,10 +372,10 @@ def main(args):
 
     tagger.print_info()
 
-    if yes_or_no("Tag? [Y/n] "):
+    if yes_or_no("Tag?"):
         tagger.tag()
 
-    if yes_or_no("Rename? [Y/n] "):
+    if yes_or_no("Rename?"):
         tagger.rename()
 
 def parse(args):
@@ -376,7 +391,6 @@ def parse(args):
         return options, args[0]
 
     parser.error("first argument must be directory")
-
 
 if __name__ == '__main__':
     try:
