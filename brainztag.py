@@ -178,7 +178,7 @@ class Tagger(object):
             self.release.title = self.release.discset.title
 
         self._order_files()
-    
+
     def _guess_artist_and_disc(self):
         rel = self.files[0]
         abs = os.path.normpath(os.path.join(os.getcwdu(), rel))
@@ -195,9 +195,9 @@ class Tagger(object):
     def _find_releases(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
         results = Query().getReleases(f)
-        # was wäre wenn wir hier die daten in unsere eigene 
-        # struktur wrappern würden und dabei gleichzeitig 
-        # alles normalisieren. dann würde das handling, 
+        # was wäre wenn wir hier die daten in unsere eigene
+        # struktur wrappern würden und dabei gleichzeitig
+        # alles normalisieren. dann würde das handling,
         # ausserhlab einhelticheer, keine komische Attribute Exceptions abfangen.
 
         # btw, list comprehensions?
@@ -272,7 +272,7 @@ class Tagger(object):
         print
         print "%s - %s - %s - %s tracks" % (
             self.release.artist.name, self.release.title,
-            self.release.earliestReleaseDate, 
+            self.release.earliestReleaseDate,
             self.release.tracks_total)
         print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
 
