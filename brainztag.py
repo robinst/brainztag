@@ -160,11 +160,14 @@ class Tagger(object):
         self.options = options
 
     def collect_info(self):
-        artist, disc = self._guess_artist_and_disc()
-        self.artist = ask('Artist: ', artist)
-        self.disc_title = ask('Disc: ', disc)
+        artist, disc_title = self._guess_artist_and_disc()
 
-        releases = self._find_releases()
+        artist = ask('Artist: ', artist)
+        disc_title = ask('Disc: ', disc_title)
+
+        track_count = len(self.files)
+
+        releases = self._find_releases(artist, disc_title, track_count)
         if not releases:
             raise NoReleasesFoundError()
         releases.sort(key=lambda r: r.title)
@@ -192,8 +195,8 @@ class Tagger(object):
         else:
             return "", ""
 
-    def _find_releases(self):
-        f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
+    def _find_releases(self, artist, disc_title, track_count):
+        f = ReleaseFilter(artistName=artist, title=disc_title)
         results = Query().getReleases(f)
         # was wäre wenn wir hier die daten in unsere eigene
         # struktur wrappern würden und dabei gleichzeitig
@@ -206,7 +209,7 @@ class Tagger(object):
             # wrap result into our own structure
             release = Release(result.release)
             # only keep releases with correct amount of tracks
-            if release.tracks_total == len(self.files):
+            if release.tracks_total == track_count:
                 releases.append(release)
 
         releases.sort(key=lambda r: r.earliestReleaseDate)
