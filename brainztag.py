@@ -209,7 +209,7 @@ class Tagger(object):
             # wrap result into our own structure
             release = Release(result.release)
             # only keep releases with correct amount of tracks
-            if release.tracks_total == track_count:
+            if track_count < 0 or release.tracks_total == track_count:
                 releases.append(release)
 
         releases.sort(key=lambda r: r.earliestReleaseDate)
@@ -355,6 +355,33 @@ class Tagger(object):
             sys.stdout.flush()
         print
 
+class BrainztagCLI(object):
+    def __init__(self, args):
+        self.args = args
+
+    def run(self):
+
+        options, dir = parse(args)
+
+
+        # generate file list
+        # initialize tagger
+        # ask user for search conditions
+        # fetch releases list
+        # present user with releases list
+        # ask user for correct release
+        # fetch release
+        # if release discset
+        #   ask user for discset number
+        # match/compare release with files list
+        # ask user for match confirmation
+        # ask user if files should be tagged
+        # ask user if files should be renamed
+        # tag & rename
+        # quit
+
+
+
 def main(args):
     options, args = parse(args)
     
@@ -371,6 +398,11 @@ def main(args):
     else:
         # args is a list of files
         files = args
+
+    b = BrainztagCLI()
+
+    b.run()
+
 
     tagger = Tagger(files, options)
 
