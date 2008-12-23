@@ -154,33 +154,21 @@ class Release(object):
 
         assert self.tracks_total == len(details.tracks), "unexpected trackk count"
 
+        # handle discsets
+        pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+).*)\)'
+        match = re.match(pattern, self.title)
+
+        if match is not None:
+            self.discset = Discset(match.groupdict())
+            self.title = discset.title
+        else:
+            self.discset =  None
+
 class Tagger(object):
     def __init__(self, files, options):
         self.files = files
         self.options = options
 
-    def collect_info(self):
-        artist, disc_title = self._guess_artist_and_disc()
-
-        artist = ask('Artist: ', artist)
-        disc_title = ask('Disc: ', disc_title)
-
-        track_count = len(self.files)
-
-        releases = self._find_releases(artist, disc_title, track_count)
-        if not releases:
-            raise NoReleasesFoundError()
-        releases.sort(key=lambda r: r.title)
-        self.release = self._query_release(releases)
-
-        # hier kann man auch disktueiren
-        self.release.load_details()
-
-        self.release.discset = self._query_discset()
-        if self.release.discset:
-            self.release.title = self.release.discset.title
-
-        self._order_files()
 
     def _guess_artist_and_disc(self):
         rel = self.files[0]
@@ -195,7 +183,7 @@ class Tagger(object):
         else:
             return "", ""
 
-    def _find_releases(self, artist, disc_title, track_count):
+    def find_releases(self, artist, disc_title, track_count):
         f = ReleaseFilter(artistName=artist, title=disc_title)
         results = Query().getReleases(f)
         # was wäre wenn wir hier die daten in unsere eigene
@@ -212,7 +200,13 @@ class Tagger(object):
             if track_count < 0 or release.tracks_total == track_count:
                 releases.append(release)
 
-        releases.sort(key=lambda r: r.earliestReleaseDate)
+        # TODO: the following line was here, but was overriden by the
+        # following line back in _collect_info()
+
+        # releases.sort(key=lambda r: r.earliestReleaseDate)
+
+        releases.sort(key=lambda r: r.title)
+
 
         return releases
 
@@ -230,19 +224,6 @@ class Tagger(object):
         return releases[number - 1]
 
     def _query_discset(self):
-        pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+).*)\)'
-        match = re.match(pattern, self.release.title)
-        if match is None:
-            return None
-
-        discset = Discset(match.groupdict())
-
-        question = 'How many discs does this set contain?: '
-        condition = lambda i: i >= discset.number
-
-        discset.total = query(question, condition, converter=int)
-
-        return discset
 
     def _order_files(self):
         """Make self.files have the same order as the tracks."""
@@ -359,12 +340,91 @@ class BrainztagCLI(object):
     def __init__(self, args):
         self.args = args
 
+
+    def parse(args):
+        usage = "Usage: %prog [options] <DIRECTORY | FILES...>"
+        parser = OptionParser(usage=usage, version="%prog 0.1")
+        parser.add_option('-s', '--strip', action='store_true',
+                          help="strip existing ID3 and APEv2 tags from files")
+        parser.add_option('-g', '--genre', dest='genre',
+                          help="set the genre frame")
+        options, args = parser.parse_args(args)
+
+        if len(args) == 1 and os.path.isdir(args[0]):
+            return options, args[0]
+        elif len(args) >= 1:
+            if all(not os.path.isdir(arg) for arg in args):
+                return options, args
+
+        parser.error("please specify either one directory or a one or more files")
+
+    # TODO: should we move this function to Brainztag?
+    def _get_files_in_folder(self, dir):
+        dir = dir.decode(sys.getfilesystemencoding())
+
+        files = fnmatch.filter(os.listdir(dir), '*.[mM][pP]3')
+        files = [os.path.join(dir, file) for file in files]
+
+    def _parse_file_list(arg):
+        if type(arg) is str:
+            # user specified a single folder
+
+            files = get_files_in_folder(arg)
+
+            if len(files) == 0:
+                _error("No mp3 files found in '%s'" % dir)
+
+            return files
+        else:
+            # user specified list of files
+            # TODO: do we need to do a encoding cleanup here
+            return args
+
+    def ask_for_discset_total(self):
+        question = 'How many discs does this set contain?: '
+        condition = lambda i: i >= discset.number
+        total = query(question, condition, converter=int)
+
+
+    def _error(msg, exitcode=1):
+        print msg
+        sys.exit(exitcode)
+
     def run(self):
+        options, arg = parse(args)
 
-        options, dir = parse(args)
+        files = _parse_file_list(arg)
+
+        tagger = Tagger(files, options)
+
+        artist, disc_title = tagger.guess_artist_and_disc()
+        artist = ask('Artist: ', artist)
+        disc_title = ask('Disc: ', disc_title)
+
+        track_count = len(self.files)
+
+        releases = tagger.find_releases(artist, disc_title, track_count)
+
+        if not releases:
+            _error("No matching discs found.")
+
+        release = tagers.query_release(releases)
+        release.load_details()
+
+        if self.release.discset is not None:
+            self.release.discset.total = ask_for_discset_total()
+
+        self._order_files()
+
+        tagger.print_info()
+
+        if yes_or_no("Tag?"):
+            tagger.tag()
+
+        if yes_or_no("Rename?"):
+            tagger.rename()
 
 
-        # generate file list
         # initialize tagger
         # ask user for search conditions
         # fetch releases list
@@ -383,63 +443,13 @@ class BrainztagCLI(object):
 
 
 def main(args):
-    options, args = parse(args)
-    
-    if type(args) is str:
-        # args is a single folder
-        dir = args.decode(sys.getfilesystemencoding())
-        files = fnmatch.filter(os.listdir(dir), '*.[mM][pP]3')
-
-        if len(files) == 0:
-            print "No mp3 files found in '" + dir + "'"
-            return 1
-
-        files = [os.path.join(dir, file) for file in files]
-    else:
-        # args is a list of files
-        files = args
-
-    b = BrainztagCLI()
+    b = BrainztagCLI(args)
 
     b.run()
 
-
-    tagger = Tagger(files, options)
-
-    try:
-        tagger.collect_info()
-    except NoReleasesFoundError:
-        print "No matching discs found."
-        return 1
-
-    tagger.print_info()
-
-    if yes_or_no("Tag?"):
-        tagger.tag()
-
-    if yes_or_no("Rename?"):
-        tagger.rename()
-
-def parse(args):
-    usage = "Usage: %prog [options] <DIRECTORY | FILES...>"
-    parser = OptionParser(usage=usage, version="%prog 0.1")
-    parser.add_option('-s', '--strip', action='store_true',
-                      help="strip existing ID3 and APEv2 tags from files")
-    parser.add_option('-g', '--genre', dest='genre',
-                      help="set the genre frame")
-    options, args = parser.parse_args(args)
-
-    if len(args) == 1 and os.path.isdir(args[0]):
-        return options, args[0]
-    elif len(args) >= 1:
-        if all(not os.path.isdir(arg) for arg in args):
-            return options, args
-
-    parser.error("please specify either one directory or a one or more files")
 
 if __name__ == '__main__':
     try:
         exitcode = main(sys.argv[1:])
     except KeyboardInterrupt:
         exitcode = 1
-    sys.exit(exitcode)
