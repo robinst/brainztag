@@ -137,7 +137,7 @@ class Release(object):
 
     def load_details(self):
         inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
-        details = Query().getReleaseById(self.id, inc)
+        details = self.query.getReleaseById(self.id, inc)
 
         self.tracks = []
 
@@ -169,6 +169,9 @@ class Release(object):
 
 class Tagger(object):
 
+    def __init__(self):
+        self.query = Query()
+
     def guess_artist_and_disc(self, files):
         rel = files[0]
         abs = os.path.normpath(os.path.join(os.getcwdu(), rel))
@@ -186,7 +189,7 @@ class Tagger(object):
         query_limit = 100
         f = ReleaseFilter(artistName=artist, title=disc_title,
                           limit=query_limit)
-        results = Query().getReleases(f)
+        results = self.query.getReleases(f)
 
         if len(results) == query_limit:
             print """\
