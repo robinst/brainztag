@@ -128,7 +128,8 @@ class Track(object):
         return "%i/%i" % (self.number, self.release.tracks_total)
 
 class Release(object):
-    def __init__(self, r):
+    def __init__(self, r, query):
+        self.query = query
         self.title = r.title
         self.tracks_total = r.tracksCount
         self.earliestReleaseDate = r.getEarliestReleaseDate()
@@ -153,7 +154,7 @@ class Release(object):
         if is_va or self.isSingleArtistRelease:
             self.album_artist = None
         else:
-            self.album_artist = self.release.artist.name
+            self.album_artist = self.artist.name
 
         assert self.tracks_total == len(details.tracks), "unexpected trackk count"
 
@@ -163,7 +164,7 @@ class Release(object):
 
         if match is not None:
             self.discset = Discset(match.groupdict())
-            self.title = discset.title
+            self.title = self.discset.title
         else:
             self.discset =  None
 
@@ -204,7 +205,7 @@ isn't in the following list.
         releases = []
         for result in results:
             # wrap result into our own structure
-            release = Release(result.release)
+            release = Release(result.release, self.query)
             # only keep releases with correct amount of tracks
             if track_count < 0 or release.tracks_total == track_count:
                 releases.append(release)
@@ -342,13 +343,12 @@ def parse_file_list(arg):
     else:
         # user specified list of files
         encoding = sys.getfilesystemencoding()
-        return [f.decode(encoding) for f in args]
+        return [f.decode(encoding) for f in arg]
 
 def ask_for_discset_total(discset):
     question = 'How many discs does this set contain?: '
     condition = lambda i: i >= discset.number
-    total = query(question, condition, converter=int)
-
+    return query(question, condition, converter=int)
 
 def query_release(releases, track_count):
     if len(releases) == 1:
