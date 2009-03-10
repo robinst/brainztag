@@ -157,7 +157,7 @@ class Release(object):
             self.album_artist = self.artist.name
 
         assert self.tracks_total is None or \
-            self.tracks_total == len(details.tracks), "unexpected trackk count"
+            self.tracks_total == len(details.tracks), "unexpected track count"
 
         # handle discsets
         pattern = r'(?P<title>.*)\((?P<desc>disc (?P<number>\d+).*)\)'
