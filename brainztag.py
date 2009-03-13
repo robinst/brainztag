@@ -156,7 +156,7 @@ class Release(object):
         else:
             self.album_artist = self.artist.name
 
-        assert self.tracks_total is None or
+        assert self.tracks_total is None or \
             self.tracks_total == len(details.tracks), "unexpected trackk count"
 
         # handle discsets
