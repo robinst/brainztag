@@ -26,7 +26,7 @@ import re
 import readline
 from optparse import OptionParser
 
-from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter
+from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter, ResourceNotFoundError
 from musicbrainz2.model import VARIOUS_ARTISTS_ID
 
 from mutagen import id3
@@ -90,15 +90,19 @@ class Tagger(object):
         self.options = options
     
     def collect_info(self):
-        artist, disc = self._guess_artist_and_disc()
-        self.artist = ask('Artist: ', artist)
-        self.disc_title = ask('Disc: ', disc)
-        
-        releases = self._find_releases()
-        if not releases:
-            raise NoReleasesFoundError()
-        releases.sort(key=lambda r: r.title)
-        self.release = self._query_release(releases)
+        if (self.options.mbid):
+            self.options.mbid
+            self.release = self._find_release_by_mbid()
+        else:
+            artist, disc = self._guess_artist_and_disc()
+            self.artist = ask('Artist: ', artist)
+            self.disc_title = ask('Disc: ', disc)
+
+            releases = self._find_releases_by_name()
+            if not releases:
+                raise NoReleasesFoundError()
+            releases.sort(key=lambda r: r.title)
+            self.release = self._query_release(releases)
         
         inc = ReleaseIncludes(artist=True, releaseEvents=True, tracks=True)
         self.release = Query().getReleaseById(self.release.id, inc)
@@ -133,7 +137,7 @@ class Tagger(object):
         else:
             return "", ""
 
-    def _find_releases(self):
+    def _find_releases_by_name(self):
         f = ReleaseFilter(artistName=self.artist, title=self.disc_title)
         results = Query().getReleases(f)
 
@@ -145,6 +149,18 @@ class Tagger(object):
         releases.sort(key=lambda r: r.getEarliestReleaseDate())
 
         return releases
+    
+    def _find_release_by_mbid(self):
+        include = ReleaseIncludes(artist=True, tracks=True)
+        try:
+            release = Query().getReleaseById(self.options.mbid, include)
+        except ResourceNotFoundError:
+            raise NoReleasesFoundError()
+
+        if len(release.tracks) == len(self.files):
+            return release
+        else:
+            raise NoReleasesFoundError()
     
     def _query_release(self, releases):
         if len(releases) == 1:
@@ -333,6 +349,8 @@ def parse(args):
                       help="strip existing ID3 and APEv2 tags from files")
     parser.add_option('-g', '--genre', dest='genre',
                       help="set the genre frame")
+    parser.add_option('', '--mbid', dest='mbid',
+                      help="the MusicBrainz ID of the album (bypasses the questions about the artist and albumname)")
     options, args = parser.parse_args(args)
     
     if len(args) == 1 and os.path.isdir(args[0]):
