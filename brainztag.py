@@ -338,7 +338,7 @@ def parse_file_list(arg):
         files = get_files_in_folder(arg)
 
         if len(files) == 0:
-            error("No mp3 files found in '%s'" % dir)
+            error("No mp3 files found in '%s'" % arg)
 
         return files
     else:
