@@ -434,7 +434,7 @@ def run(args):
 
         release = query_release(releases, track_count)
 
-    release.load_details()
+        release.load_details()
 
     if release.discset is not None:
         release.discset.total = ask_for_discset_total(release.discset)
