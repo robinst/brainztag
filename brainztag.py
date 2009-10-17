@@ -232,8 +232,6 @@ isn't in the following list.
 
         release = Release(result, self.query, details_included=True)
 
-        print release.tracks_total
-
         if release.tracks_total == track_count:
             return release
         else:
