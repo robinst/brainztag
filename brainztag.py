@@ -228,14 +228,15 @@ isn't in the following list.
         try:
             result = self.query.getReleaseById(mbid, include)
         except ResourceNotFoundError:
-            raise NoReleasesFoundError(mbid)
+            error("There is no Release with this Musicbrainz ID")
 
         release = Release(result, self.query, details_included=True)
 
         if release.tracks_total == track_count:
             return release
         else:
-            raise NoReleasesFoundError("Unexpected track count, expected: %i but was %i" % (track_count, release.tracks_total))
+            error("Unexpected track count for '%s - %s' expected %i but was %i"
+                  % (release.artist.name, release.title, track_count, release.tracks_total))
 
 
     def order_files(self, files, tracks):
