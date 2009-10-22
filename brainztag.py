@@ -446,15 +446,19 @@ def run(args):
     def progress(file, track):
         sys.stdout.write('.')
         sys.stdout.flush()
+    
+    question  = "Continue? ([t]ag, [r]ename, [B]oth): "
+    condition = lambda a: a in ['t', 'r', 'b', '']
+    answer =  query(question, condition)
 
-    if yes_or_no("Tag?"):
+    if answer in ['t', 'b', '']:
         tagger.tag(files, release, genre=options.genre,
                    strip_existing_tags=options.strip, progress=progress)
-        print
 
-    if yes_or_no("Rename?"):
+    if answer in ['r', 'b', '']:
         tagger.rename(files, release, progress=progress)
-        print
+    
+    print
 
 
 def main(args):
