@@ -447,8 +447,8 @@ def run(args):
         sys.stdout.write('.')
         sys.stdout.flush()
     
-    question  = "Continue? ([t]ag, [r]ename, [B]oth): "
-    condition = lambda a: a in ['t', 'r', 'b', '']
+    question  = "Continue? ([t]ag, [r]ename, [B]oth, [c]ancel): "
+    condition = lambda a: a in ['t', 'r', 'b', 'c', '']
     answer =  query(question, condition)
 
     if answer in ['t', 'b', '']:
