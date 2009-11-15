@@ -427,14 +427,8 @@ def run(args):
         release = tagger.find_release_by_mbid(options.mbid, track_count)
     else:
         artist, disc_title = tagger.guess_artist_and_disc(files)
-        if options.artist:
-            artist = options.artist
-        else:
-            artist = ask('Artist: ', artist)
-        if options.disc:
-            disc_title = options.disc
-        else:
-            disc_title = ask('Disc: ', disc_title)
+        artist = options.artist or ask('Artist: ', artist)
+        disc_title = options.disc or ask('Disc: ', disc_title)
 
         releases = tagger.find_releases(artist, disc_title, track_count)
 
