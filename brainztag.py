@@ -341,6 +341,10 @@ def parse(args):
                       help="set the genre frame")
     parser.add_option('', '--mbid', dest='mbid',
                       help="the MusicBrainz ID of the album (bypasses the questions about the artist and albumname)")
+    parser.add_option('-a', '--artist', dest='artist',
+                      help="set the artist (bypasses the question about the artistname)")
+    parser.add_option('-d', '--disc', dest='disc',
+                      help="set the disctitle (bypasses the question about the disctitle)")
     options, args = parser.parse_args(args)
 
     if len(args) == 1 and os.path.isdir(args[0]):
@@ -423,8 +427,14 @@ def run(args):
         release = tagger.find_release_by_mbid(options.mbid, track_count)
     else:
         artist, disc_title = tagger.guess_artist_and_disc(files)
-        artist = ask('Artist: ', artist)
-        disc_title = ask('Disc: ', disc_title)
+        if options.artist:
+            artist = options.artist
+        else:
+            artist = ask('Artist: ', artist)
+        if options.disc:
+            disc_title = options.disc
+        else:
+            disc_title = ask('Disc: ', disc_title)
 
         releases = tagger.find_releases(artist, disc_title, track_count)
 
