@@ -29,6 +29,7 @@ from optparse import OptionParser
 from musicbrainz2.webservice import Query, ReleaseIncludes, ReleaseFilter, ResourceNotFoundError
 from musicbrainz2.model import VARIOUS_ARTISTS_ID
 
+from mutagen.mp3 import MP3
 from mutagen import id3
 from mutagen import apev2
 
@@ -95,6 +96,9 @@ def distinctive_parts(s):
     result = [try_int(part.lower()) for part in parts]
     return result
 
+def format_seconds(seconds):
+    return "%u:%02u" % (seconds/60, seconds%60)
+
 class NoReleasesFoundError(Exception):
     pass
 
@@ -113,6 +117,7 @@ class Track(object):
 
         self.title = t.title
         self.id = t.id
+        self.duration = t.duration
 
         # MusicBrainz Track UUID
         self.uuid = self.id.split('/')[-1]
@@ -399,12 +404,15 @@ def print_info(release, files):
         release.artist.name, release.title,
         release.earliestReleaseDate,
         release.tracks_total)
-    print "   " + "Musicbrainz track".center(30) + "Filename".center(30)
+    print "    " + "Musicbrainz track".center(35) + " | " + "Filename".center(35)
 
     files_and_tracks = zip(files, release.tracks)
     for i, (file, track) in enumerate(files_and_tracks):
         basename = os.path.basename(file)
-        print "%2s. %-30s %-30s" % (i + 1, track.title, basename)
+        mp3 = MP3(file)
+        file_duration = format_seconds(mp3.info.length)
+        track_duration = format_seconds(track.duration/1000)
+        print "%2s. %-30s %4s | %-30s %4s" % (i + 1, track.title, track_duration, basename, file_duration)
 
 
 def error(msg, exitcode=1):
