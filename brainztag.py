@@ -415,7 +415,7 @@ def print_info(release, files):
         basename = os.path.basename(file)
         mp3 = MP3(file)
         file_duration = format_seconds(mp3.info.length)
-        track_duration = format_seconds(track.duration/1000)
+        track_duration = format_seconds((track.duration or 0)/1000)
         print "%2s. %-30s %4s | %-30s %4s" % (i + 1, track.title, track_duration, basename, file_duration)
 
 
