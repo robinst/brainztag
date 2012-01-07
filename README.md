@@ -24,14 +24,22 @@ Usage
 
 ```sh
 $ cd "Sophie Hunger - Monday's Ghost"
+```
 
+```sh
 $ ls
+```
+```
 10-rise_and_fall.mp3  14-spiegelbild.mp3      4-walzer_für_niemand.mp3   8-the_tourist.mp3
 11-drainpipes.mp3     1-shape.mp3             5-birth-day.mp3            9-teenage_spirit.mp3
 12-mondays_ghost.mp3  2-the_boat_is_full.mp3  6-sophie_hunger_blues.mp3
 13-house_of_gods.mp3  3-a_protest_song.mp3    7-round_and_round.mp3
+```
 
+```sh
 $ brainztag.py --strip --genre "Folk-Pop" .   
+```
+```
 Artist: Sophie Hunger
 Disc: Monday's Ghost
 Found 2 discs with 14 tracks. Choose the correct one.
@@ -57,8 +65,12 @@ Sophie Hunger - Monday's Ghost - 2008-10-10 - 14 tracks
 14. Spiegelbild (feat. Stephan Eicher) 3:50 | 14-spiegelbild.mp3             3:50
 Continue? ([t]ag, [r]ename, [B]oth, [c]ancel): b
 ............................
+```
 
+```sh
 $ ls
+```
+```
 01. Shape.mp3               06. Sophie Hunger Blues.mp3  11. Drainpipes.mp3
 02. The Boat Is Full.mp3    07. Round and Round.mp3      12. Monday's Ghost.mp3
 03. A Protest Song.mp3      08. The Tourist.mp3          13. House of Gods.mp3
